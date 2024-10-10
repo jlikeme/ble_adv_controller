@@ -65,7 +65,8 @@ void BleAdvLight::write_state(light::LightState *state) {
   float br_diff = abs(this->brightness_ - updated_brf) * 100;
   float ct_diff = abs(this->warm_color_ - updated_ctf) * 100;
   bool is_last = (state->current_values == state->remote_values);
-  if ((br_diff < 3 && ct_diff < 3 && !is_last) || (is_last && br_diff == 0 && ct_diff == 0)) {
+  if (br_diff < 3 && ct_diff < 3 && !is_last) {
+    ESP_LOGD(TAG, "Ignore changing if Brigtness / Color Temperature was not modified enough");
     return;
   }
   
