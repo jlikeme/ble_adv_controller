@@ -280,7 +280,7 @@ void BleAdvHandler::on_raw_decode(std::string raw) {
 class HackESPBTDevice: public esp32_ble_tracker::ESPBTDevice {
 public:
   void get_raw_packet(BleAdvParam & param) const {
-    param.from_raw(this->scan_result_.ble_adv, this->scan_result_.adv_data_len);
+    param.from_raw(this->scan_result_->ble_adv, this->scan_result_->adv_data_len);
   }
 };
 
