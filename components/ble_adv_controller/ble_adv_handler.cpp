@@ -99,7 +99,7 @@ void BleAdvEncoder::encode(std::vector< BleAdvParam > & params, Command &cmd, Co
     std::copy(this->header_.begin(), this->header_.end(), param.get_data_buf());
     uint8_t * buf = param.get_data_buf() + this->header_.size();
 
-    ESP_LOGD(this->id_.c_str(), "UUID: '0x%X', index: %d, tx: %d, cmd: '0x%02X', args: [%d,%d,%d,%d]", 
+    ESP_LOGD(this->id_.c_str(), "UUID: '0x%lX', index: %d, tx: %d, cmd: '0x%02X', args: [%d,%d,%d,%d]", 
         cont.id_, cont.index_, cont.tx_count_, acmd.cmd_, acmd.args_[0], acmd.args_[1], acmd.args_[2], acmd.args_[3]);
 
     this->encode(buf, acmd, cont);
@@ -204,7 +204,7 @@ uint16_t BleAdvHandler::add_to_advertiser(std::vector< BleAdvParam > & params) {
   uint32_t msg_id = ++this->id_count;
   for (auto & param : params) {
     this->packets_.emplace_back(BleAdvProcess(msg_id, std::move(param)));
-    ESP_LOGD(TAG, "request start advertising - %d: %s", msg_id, 
+    ESP_LOGD(TAG, "request start advertising - %ld: %s", msg_id, 
                 esphome::format_hex_pretty(param.get_full_buf(), param.get_full_len()).c_str());
   }
   params.clear(); // As we moved the content, just to be sure no caller will re use it
@@ -252,8 +252,11 @@ bool BleAdvHandler::identify_param(const BleAdvParam & param, bool ignore_ble_pa
       encoder->encode(params, cmd, cont);
       BleAdvParam & fparam = params.back();
       ESP_LOGD(TAG, "enc - %s", esphome::format_hex_pretty(fparam.get_full_buf(), fparam.get_full_len()).c_str());
-      bool nodiff = std::equal(param.get_const_data_buf(), param.get_const_data_buf() + param.get_data_len(), fparam.get_data_buf());
-      nodiff ? ESP_LOGI(TAG, "Decoded / Re-encoded with NO DIFF") : ESP_LOGE(TAG, "DIFF after Decode / Re-encode");
+      if (std::equal(param.get_const_data_buf(), param.get_const_data_buf() + param.get_data_len(), fparam.get_data_buf())) {
+        ESP_LOGI(TAG, "Decoded / Re-encoded with NO DIFF");
+      } else {
+        ESP_LOGE(TAG, "DIFF after Decode / Re-encode");
+      }
 
       return true;
     } 
@@ -277,7 +280,7 @@ void BleAdvHandler::on_raw_decode(std::string raw) {
 class HackESPBTDevice: public esp32_ble_tracker::ESPBTDevice {
 public:
   void get_raw_packet(BleAdvParam & param) const {
-    param.from_raw(this->scan_result_.ble_adv, this->scan_result_.adv_data_len);
+    param.from_raw(this->scan_result_->ble_adv, this->scan_result_->adv_data_len);
   }
 };
 
