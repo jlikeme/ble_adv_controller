@@ -15,7 +15,7 @@ void BleAdvSelect::control(const std::string &value) {
 }
 
 void BleAdvSelect::sub_init() { 
-  App.register_select(this);
+  // App.register_select(this);
   this->rtc_ = global_preferences->make_preference< uint32_t >(this->get_object_id_hash());
   uint32_t restored;
   if (this->rtc_.load(&restored)) {
@@ -34,7 +34,7 @@ void BleAdvNumber::control(float value) {
 }
 
 void BleAdvNumber::sub_init() {
-  App.register_number(this);
+  // App.register_number(this);
   this->rtc_ = global_preferences->make_preference< float >(this->get_object_id_hash());
   float restored;
   if (this->rtc_.load(&restored)) {
@@ -43,7 +43,19 @@ void BleAdvNumber::sub_init() {
 }
 
 void BleAdvController::set_encoding_and_variant(const std::string & encoding, const std::string & variant) {
-  this->select_encoding_.traits.set_options(this->handler_->get_ids(encoding));
+  // 1) 保存 string，保证 c_str 指针后续一直有效
+  this->encoding_options_ = this->handler_->get_ids(encoding);
+
+  // 2) 转成 FixedVector<const char*>
+  esphome::FixedVector<const char *> opts;
+  opts.init(this->encoding_options_.size());
+  for (auto &s : this->encoding_options_) {
+    opts.push_back(s.c_str());
+  }
+
+  // 3) 设置 options（ESPHome 现在只吃 initializer_list 或 FixedVector）
+  this->select_encoding_.traits.set_options(opts);  // :contentReference[oaicite:4]{index=4}
+
   this->cur_encoder_ = this->handler_->get_encoder(encoding, variant);
   this->select_encoding_.state = this->cur_encoder_->get_id();
   this->select_encoding_.add_on_state_callback(std::bind(&BleAdvController::refresh_encoder, this, std::placeholders::_1, std::placeholders::_2));

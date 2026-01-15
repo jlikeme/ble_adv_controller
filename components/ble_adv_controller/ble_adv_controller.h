@@ -74,6 +74,7 @@ public:
   void setup() override;
   void loop() override;
   virtual void dump_config() override;
+  std::vector<std::string> encoding_options_;
   
   void set_min_tx_duration(int tx_duration, int min, int max, int step);
   uint32_t get_min_tx_duration() { return (uint32_t)this->number_duration_.state; }
