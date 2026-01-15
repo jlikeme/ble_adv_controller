@@ -1,0 +1,125 @@
+esphome:
+  name: esphomecontrollerlivingroom
+  friendly_name: ESPHomeControllerLivingRoom
+  devices:
+    - id: light_living_room
+      name: "Living Room Light"
+    - id: light_dining_room
+      name: "Dining Room Light"
+    - id: light_secondary_bedroom
+      name: "Secondary Bedroom Light"
+    - id: nec_mac_hdmi
+      name: "Mac HDMI NEC"
+
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+  flash_size: 16MB
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "+V2x7SLSdqiB72JntPaYKI1SzQfxOYff5UcLghZ0RIU="
+  custom_services: true
+
+ota:
+  - platform: esphome
+    password: "54f3bf38dd993627c6ff50328ba2450f"
+
+wifi:
+  ssid: Home
+  password: "1234567890"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esphomecontrollerlivingroom"
+    password: "rVXdMa9wChdA"
+
+captive_portal:
+
+
+external_components:
+  # shorthand
+  - source:
+      type: local
+      path: components
+
+ble_adv_controller:
+  - id: LightlivingRoom
+    encoding: lampsmart_pro
+    max_duration: 3000
+    duration: 500
+    device_id: light_living_room
+  - id: DiningRoom
+    encoding: lampsmart_pro
+    max_duration: 3000
+    duration: 500
+    reversed: true
+    device_id: light_dining_room
+  - id: SecondaryBedroom
+    encoding: lampsmart_pro
+    max_duration: 3000
+    duration: 500
+    device_id: light_secondary_bedroom
+
+light:
+  - platform: ble_adv_controller
+    ble_adv_controller_id: LightlivingRoom
+    name: LightlivingRoom
+    constant_brightness: false
+    min_brightness: 1%
+    device_id: light_living_room
+  - platform: ble_adv_controller
+    ble_adv_controller_id: DiningRoom
+    name: DiningRoom
+    constant_brightness: false
+    min_brightness: 1%
+    device_id: light_dining_room
+  - platform: ble_adv_controller
+    ble_adv_controller_id: SecondaryBedroom
+    name: SecondaryBedroom
+    constant_brightness: false
+    min_brightness: 1%
+    device_id: light_secondary_bedroom
+
+button:
+  - platform: ble_adv_controller
+    ble_adv_controller_id: LightlivingRoom
+    name: PairLightlivingRoom
+    cmd: pair
+    device_id: light_living_room
+  - platform: ble_adv_controller
+    ble_adv_controller_id: DiningRoom
+    name: PairDiningRoom
+    cmd: pair
+    device_id: light_dining_room
+  - platform: ble_adv_controller
+    ble_adv_controller_id: SecondaryBedroom
+    name: PairSecondaryBedroom
+    cmd: pair
+    device_id: light_secondary_bedroom
+  - platform: template
+    name: "Mac HDMI Simulator"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x7F80
+          command: 0xFE01
+    device_id: nec_mac_hdmi
+  - platform: template
+    name: "Mac HDMI TV"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x7F80
+          command: 0xFC03
+    device_id: nec_mac_hdmi
+
+remote_transmitter:
+  id: ir_transmitter
+  pin: GPIO18
+  carrier_duty_percent: 50%
