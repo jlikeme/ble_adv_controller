@@ -256,8 +256,7 @@ class BleAdvRegistry:
         if not cls.handler:
             hdl_id = ID("ble_adv_static_handler", type=BleAdvHandler)
             cls.handler = cg.new_Pvariable(hdl_id)
-            cg.add(cls.handler.set_component_source("ble_adv_handler"))
-            cg.add(cg.App.register_component(cls.handler))
+            cg.add(cg.App.register_component_(cls.handler))
             for encoding, params in BLE_ADV_ENCODERS.items():
                 for variant, param_variant in params["variants"].items():
                     if "class" in param_variant:
@@ -271,7 +270,6 @@ class BleAdvRegistry:
 async def to_code(config):
     hdl = BleAdvRegistry.get()
     var = cg.new_Pvariable(config[CONF_ID])
-    cg.add(var.set_setup_priority(300)) # start after Bluetooth
     await cg.register_component(var, config)
     await setup_entity(var, config, "ble_adv_controller")
     cg.add(var.set_handler(hdl))
@@ -284,6 +282,7 @@ async def to_code(config):
         cg.add(var.set_forced_id(config[CONF_BLE_ADV_FORCED_ID]))
     else:
         cg.add(var.set_forced_id(config[CONF_ID].id))
+    cg.add(var.set_index(config[CONF_INDEX]))
     cg.add(var.set_show_config(config[CONF_BLE_ADV_SHOW_CONFIG]))
 
 
