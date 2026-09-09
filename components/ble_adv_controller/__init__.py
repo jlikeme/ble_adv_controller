@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.core import ID
+from esphome.core import CORE, ID
 from esphome.const import (
     CONF_DURATION,
     CONF_ID,
@@ -24,6 +24,9 @@ from .const import (
 AUTO_LOAD = ["esp32_ble", "select", "number"]
 DEPENDENCIES = ["esp32"]
 MULTI_CONF = True
+
+CONF_BLE_ADV_HANDLER_ID = "ble_adv_handler_id"
+BLE_ADV_HANDLER_ID = "ble_adv_static_handler"
 
 bleadvcontroller_ns = cg.esphome_ns.namespace('bleadvcontroller')
 BleAdvController = bleadvcontroller_ns.class_('BleAdvController', cg.Component, cg.EntityBase)
@@ -229,6 +232,17 @@ def validate_forced_id(config):
         raise cv.Invalid("Invalid 'forced_id' for %s - %s: %s. Maximum: 0x%X." % (encoding, variant, forced_id, max_forced_id))
     return config
 
+def declare_shared_handler(config):
+    # Declare the singleton during validation, before ESPHome sizes its component
+    # arrays. Other controllers reference the same handler instead of declaring it.
+    data = CORE.data.setdefault("ble_adv_controller", {})
+    if not data.get("handler_declared", False):
+        config[CONF_BLE_ADV_HANDLER_ID] = cv.declare_id(BleAdvHandler)(BLE_ADV_HANDLER_ID)
+        data["handler_declared"] = True
+    else:
+        config[CONF_BLE_ADV_HANDLER_ID] = cv.use_id(BleAdvHandler)(BLE_ADV_HANDLER_ID)
+    return config
+
 CONFIG_SCHEMA = cv.All(
     cv.Any(
         *[ CONTROLLER_BASE_CONFIG.extend(
@@ -242,21 +256,22 @@ CONFIG_SCHEMA = cv.All(
     validate_forced_id,
     validate_legacy_variant,
     cv.only_on([PLATFORM_ESP32]),
+    declare_shared_handler,
 )
 
-async def entity_base_code_gen(var, config, platform):
+async def entity_base_code_gen(var, config, platform=None):
     await cg.register_parented(var, config[CONF_BLE_ADV_CONTROLLER_ID])
     await cg.register_component(var, config)
-    await setup_entity(var, config, platform)
+    if platform is not None:
+        await setup_entity(var, config, platform)
 
 class BleAdvRegistry:
-    handler = None
     @classmethod
-    def get(cls):
-        if not cls.handler:
-            hdl_id = ID("ble_adv_static_handler", type=BleAdvHandler)
-            cls.handler = cg.new_Pvariable(hdl_id)
-            cg.add(cg.App.register_component_(cls.handler))
+    async def get(cls, config):
+        hdl_id = config[CONF_BLE_ADV_HANDLER_ID]
+        if hdl_id.is_declaration:
+            handler = cg.new_Pvariable(hdl_id)
+            await cg.register_component(handler, {})
             for encoding, params in BLE_ADV_ENCODERS.items():
                 for variant, param_variant in params["variants"].items():
                     if "class" in param_variant:
@@ -264,11 +279,12 @@ class BleAdvRegistry:
                         enc = cg.new_Pvariable(enc_id, encoding, variant, *param_variant["args"])
                         cg.add(enc.set_ble_param(*param_variant["ble_param"]))
                         cg.add(enc.set_header(param_variant["header"]))
-                        cg.add(cls.handler.add_encoder(enc))
-        return cls.handler
+                        cg.add(handler.add_encoder(enc))
+            return handler
+        return await cg.get_variable(hdl_id)
 
 async def to_code(config):
-    hdl = BleAdvRegistry.get()
+    hdl = await BleAdvRegistry.get(config)
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await setup_entity(var, config, "ble_adv_controller")
@@ -284,5 +300,4 @@ async def to_code(config):
         cg.add(var.set_forced_id(config[CONF_ID].id))
     cg.add(var.set_index(config[CONF_INDEX]))
     cg.add(var.set_show_config(config[CONF_BLE_ADV_SHOW_CONFIG]))
-
 
