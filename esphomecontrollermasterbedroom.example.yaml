@@ -1,0 +1,73 @@
+# 主卧灯控制 + 青萍 CGD1 校时代理。
+# 与本工程 components/ 目录放在同一级，使用已修复兼容性的本地组件。
+# 先参考 secrets.example.yaml，在同目录配置自己的 secrets.yaml。
+# CGD1 的 token 和校时计划在 Home Assistant 的 BLE Clock Sync 集成中设置。
+# HA >= 2026.8.0，集成安装说明：https://github.com/xangin/ble-clock-sync
+
+esphome:
+  name: master-bedroom-controller
+  friendly_name: "主卧控制器"
+  min_version: 2026.8.2
+
+esp32:
+  board: esp32dev
+  # 沿用当前工程的 16MB Flash 设置；按实际 ESP32 板卡容量修改。
+  flash_size: 16MB
+  framework:
+    type: arduino
+
+logger:
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+  # ble_adv_controller 注册了自定义 API 服务，需要保留此项。
+  custom_services: true
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components:
+      - ble_adv_controller
+
+# 保持默认扫描参数，供 Home Assistant 发现并连接附近的 BLE 设备。
+esp32_ble_tracker:
+
+bluetooth_proxy:
+  active: true
+  connection_slots: 1
+
+# 主卧灯：沿用现有工程的 LampSmart Pro 协议。
+# 如果实际灯具使用其他协议，需要修改 encoding / variant。
+ble_adv_controller:
+  - id: master_bedroom_lamp
+    encoding: lampsmart_pro
+    variant: v3
+    duration: 500
+    max_duration: 3000
+
+light:
+  - platform: ble_adv_controller
+    id: master_bedroom_light
+    ble_adv_controller_id: master_bedroom_lamp
+    name: "主卧灯_遥控"
+    constant_brightness: false
+    min_brightness: 1%
+    default_transition_length: 0s
+
+button:
+  - platform: ble_adv_controller
+    ble_adv_controller_id: master_bedroom_lamp
+    name: "主卧灯配对"
+    entity_category: config
+    cmd: pair

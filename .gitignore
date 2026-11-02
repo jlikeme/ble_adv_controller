@@ -161,3 +161,6 @@ cython_debug/
 
 .idea/
 .esphome/
+
+# Local ESPHome credentials
+secrets.yaml

@@ -6,18 +6,16 @@
 #ifdef USE_API
 #include "esphome/components/api/custom_api_device.h"
 #endif
+// BLE clients such as Bluetooth Proxy do not always enable parsed device types.
+#ifdef USE_ESP32_BLE_DEVICE
+#include "esphome/components/esp32_ble_tracker/esp32_ble_tracker.h"
+#endif
 
 #include <esp_gap_ble_api.h>
 #include <vector>
 #include <list>
 
 namespace esphome {
-
-#ifdef USE_ESP32_BLE_CLIENT
-namespace esp32_ble_tracker {
-  class ESPBTDevice;
-}
-#endif
 
 namespace bleadvcontroller {
 
@@ -216,7 +214,7 @@ public:
   bool identify_param(const BleAdvParam & param, bool ignore_ble_param);
 
   // Listener
-#ifdef USE_ESP32_BLE_CLIENT
+#ifdef USE_ESP32_BLE_DEVICE
   void capture(const esp32_ble_tracker::ESPBTDevice & device, bool ignore_ble_param = true, uint16_t rem_time = 60);
 #endif
 
